@@ -3,7 +3,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 import logging
 
-from .conversation import Conversation
+from .conversation import Conversation, ConvBlock
 
 
 class ConversationParser:
@@ -75,7 +75,7 @@ class ConversationParser:
             duration_minutes = (end_time - start_time).total_seconds() / 60
             message_count = len(conversation_data)
             
-            # Combine all block_data into full_text with deduplication
+            # Combine all block_data into full_text with deduplication (for backward compatibility)
             unique_blocks = []
             seen_blocks = set()
             for block in conversation_data['block_data'].astype(str):
@@ -83,6 +83,19 @@ class ConversationParser:
                     unique_blocks.append(block)
                     seen_blocks.add(block)
             full_text = '\n'.join(unique_blocks)
+            
+            # Create ConvBlock objects for the new structure
+            blocks = []
+            seen_block_texts = set()
+            for _, row in conversation_data.iterrows():
+                block_data = str(row['block_data'])
+                block_type = row['block_type']
+                
+                # Avoid duplicates
+                if block_data not in seen_block_texts:
+                    conv_block = ConvBlock.from_csv_block(block_data, block_type)
+                    blocks.append(conv_block)
+                    seen_block_texts.add(block_data)
             
             # Extract departments
             departments = conversation_data['nnDepartment'].dropna().unique().tolist()
@@ -96,8 +109,12 @@ class ConversationParser:
                 duration_minutes=duration_minutes,
                 message_count=message_count,
                 full_text=full_text,
+                blocks=blocks,
                 departments=departments
             )
+            
+            # Update agent types based on blocks
+            conversation.update_agent_types()
             
             conversations.append(conversation)
         
