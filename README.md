@@ -1,6 +1,9 @@
 # Finam Task - Анализ мультиагентной системы
 
-https://github.com/CrudyLame/Finam_Task/raw/main/media/finam_demo.mp4
+<video width="100%" controls>
+  <source src="https://github.com/CrudyLame/Finam_Task/raw/main/media/finam_demo.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
 Комплексная система анализа взаимодействий сотрудников с мультиагентной системой, включающая веб-дашборд для визуализации и анализа данных диалогов.
 
