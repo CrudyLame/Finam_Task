@@ -21,10 +21,5 @@ dependencies = [
     "openpyxl>=3.1.0",
     "xlsxwriter>=3.1.0",
     "tqdm>=4.65.0",
-    "transformers>=4.0.0",
-    "torch>=2.0.0",
-    "accelerate>=0.20.0",
-    "groq>=0.29.0",
-    "ollama>=0.5.1",
 ]
 
