@@ -14,48 +14,73 @@ from utils import get_agent_performance_data
 
 def show_agent_performance(conversations):
 	"""Display agent performance analysis with usage and success metrics"""
-	st.header("🤖 Agent Performance Analysis")
+	st.header("⚡ Производительность агентов")
 	
-	# Extract agent data
-	agent_data = get_agent_performance_data(conversations)
+	# Create tabs
+	tab1, tab2 = st.tabs(["📊 Анализ", "💡 Гипотезы"])
 	
-	if agent_data:
-		agent_df = pd.DataFrame(agent_data)
+	with tab1:
+		# Description section (empty for user to fill)
+		st.subheader("📝 Описание раздела")
+		st.info("Это место для описания раздела анализа производительности агентов. Заполните по необходимости.")
 		
-		col1, col2 = st.columns(2)
+		# Comments section (empty for user to fill)
+		st.subheader("💬 Комментарии")
+		st.text_area("Ваши комментарии:", 
+					placeholder="Введите здесь свои комментарии об анализе агентов...", 
+					height=100, 
+					key="agent_comments")
 		
-		with col1:
-			# Agent usage frequency
-			agent_counts = agent_df['agent'].value_counts()
-			fig = px.bar(
-				x=agent_counts.index,
-				y=agent_counts.values,
-				title="Agent Usage Frequency"
-			)
-			st.plotly_chart(fig, use_container_width=True)
+		# Extract agent data
+		agent_data = get_agent_performance_data(conversations)
 		
-		with col2:
-			# Agent success rates
-			success_rates = agent_df.groupby('agent')['success'].mean()
-			fig = px.bar(
-				x=success_rates.index,
-				y=success_rates.values,
-				title="Agent Success Rates"
-			)
-			fig.update_layout(yaxis=dict(tickformat='.1%'))
-			st.plotly_chart(fig, use_container_width=True)
+		if agent_data:
+			agent_df = pd.DataFrame(agent_data)
+			
+			col1, col2 = st.columns(2)
+			
+			with col1:
+				# Agent usage frequency
+				agent_counts = agent_df['agent'].value_counts()
+				fig = px.bar(
+					x=agent_counts.index,
+					y=agent_counts.values,
+					title="Частота использования агентов"
+				)
+				st.plotly_chart(fig, use_container_width=True)
+			
+			with col2:
+				# Agent success rates
+				success_rates = agent_df.groupby('agent')['success'].mean()
+				fig = px.bar(
+					x=success_rates.index,
+					y=success_rates.values,
+					title="Уровень успешности агентов"
+				)
+				fig.update_layout(yaxis=dict(tickformat='.1%'))
+				st.plotly_chart(fig, use_container_width=True)
+			
+			# Performance metrics table
+			st.subheader("📊 Метрики производительности агентов")
+			performance_metrics = agent_df.groupby('agent').agg({
+				'success': ['count', 'mean'],
+				'duration': 'mean',
+				'messages': 'mean'
+			}).round(2)
+			
+			performance_metrics.columns = ['Всего взаимодействий', 'Уровень успеха', 'Средняя длительность (мин)', 'Среднее кол-во сообщений']
+			st.dataframe(performance_metrics, use_container_width=True)
+			
+		else:
+			st.info("Данные о производительности агентов недоступны")
+			st.write("Большинство диалогов обрабатываются без назначения конкретных агентов.")
+	
+	with tab2:
+		st.subheader("💡 Гипотезы")
+		st.info("Это место для ваших гипотез относительно производительности агентов. Заполните по необходимости.")
 		
-		# Performance metrics table
-		st.subheader("📊 Agent Performance Metrics")
-		performance_metrics = agent_df.groupby('agent').agg({
-			'success': ['count', 'mean'],
-			'duration': 'mean',
-			'messages': 'mean'
-		}).round(2)
-		
-		performance_metrics.columns = ['Total Interactions', 'Success Rate', 'Avg Duration (min)', 'Avg Messages']
-		st.dataframe(performance_metrics, use_container_width=True)
-		
-	else:
-		st.info("No agent performance data available")
-		st.write("Most conversations appear to be handled without specific agent assignments.")
+		# Placeholder for hypotheses
+		st.text_area("Ваши гипотезы:", 
+					placeholder="Введите здесь свои гипотезы о производительности агентов...", 
+					height=200, 
+					key="agent_hypotheses")

@@ -3,6 +3,7 @@ from utils import load_conversation_data
 from pages.overview import show_overview
 from pages.category_analysis import show_category_analysis
 from pages.problems_analysis import show_problems_analysis
+from pages.functional_analysis import show_functional_analysis
 from pages.ux_analysis import show_ux_analysis
 from pages.agent_performance import show_agent_performance
 
@@ -39,6 +40,7 @@ def main():
 		"📈 Обзор": "Обзор",
 		"📊 Анализ категорий": "Анализ категорий", 
 		"🔍 Анализ проблем": "Анализ проблем",
+		"🔧 Анализ функционала": "Анализ функционала",
 		"🎨 UX анализ": "UX анализ",
 		"⚡ Производительность агентов": "Производительность агентов"
 	}
@@ -71,6 +73,8 @@ def main():
 		show_category_analysis(conversations)
 	elif page == "Анализ проблем":
 		show_problems_analysis(conversations)
+	elif page == "Анализ функционала":
+		show_functional_analysis(conversations)
 	elif page == "UX анализ":
 		show_ux_analysis(conversations)
 	elif page == "Производительность агентов":

@@ -16,6 +16,10 @@ def show_category_analysis(conversations):
 	"""Display category analysis page with request categories and intents"""
 	st.header("🏷️ Анализ категорий")
 	
+	# Description section (empty for user to fill)
+	st.subheader("📝 Описание раздела")
+	st.info("Это место для описания раздела анализа категорий. Заполните по необходимости.")
+	
 	categories, intents = get_category_stats(conversations)
 	
 	col1, col2 = st.columns(2)
