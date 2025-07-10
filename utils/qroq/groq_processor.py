@@ -8,7 +8,10 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import List, Dict, Tuple
+from typing import TYPE_CHECKING, Dict, List, Any, Tuple
+
+if TYPE_CHECKING:
+    from groq import Groq
 
 from utils.conv.conversation import Conversation
 from utils.qroq.groq_mapper import GroqMapper
@@ -42,7 +45,7 @@ class GroqProcessor:
         self.conversations_file = conversations_file
         self.progress_file = "processing_progress_groq.json"
 
-    def conversation_to_dict(self, conv: Conversation) -> dict:
+    def conversation_to_dict(self, conv: Conversation) -> dict[str, any]:
         """Convert Conversation object to dictionary for JSON serialization."""
         result = {
             "dialogue_id": conv.dialogue_id,
@@ -91,17 +94,17 @@ class GroqProcessor:
         with open(self.progress_file, "w", encoding="utf-8") as f:
             json.dump(progress_data, f, ensure_ascii=False, indent=2)
 
-    def load_progress(self) -> Dict:
+    def load_progress(self) -> dict[str, any]:
         """Load progress from file if exists."""
         if os.path.exists(self.progress_file):
             try:
                 with open(self.progress_file, "r", encoding="utf-8") as f:
                     return json.load(f)
-            except:
+            except Exception:
                 pass
         return {}
 
-    def update_conversations_file(self, updated_conversations: List[Conversation]):
+    def update_conversations_file(self, updated_conversations: list[Conversation]) -> None:
         """Update the conversations file with UX analysis."""
         # Load existing conversations file
         with open(self.conversations_file, "r", encoding="utf-8") as f:
@@ -120,7 +123,7 @@ class GroqProcessor:
         with open(self.conversations_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-    def load_conversations_from_file(self) -> List[Conversation]:
+    def load_conversations_from_file(self) -> list[Conversation]:
         """Load conversations from the JSON file."""
         with open(self.conversations_file, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -136,7 +139,7 @@ class GroqProcessor:
         
         return conversations
 
-    def process_conversation_sync(self, args: Tuple[Conversation, GroqMapper]) -> Dict:
+    def process_conversation_sync(self, args: tuple[Conversation, GroqMapper]) -> dict[str, any]:
         """Synchronous wrapper for processing a single conversation."""
         conversation, mapper = args
         try:
@@ -158,13 +161,13 @@ class GroqProcessor:
                 "error": str(e),
             }
 
-    async def process_ux_analysis(self, start_index: int = 0) -> List[Conversation]:
-        """Process UX analysis and update conversations file."""
+    async def process_ux_and_intent_analysis(self, start_index: int = 0) -> list[Conversation]:
+        """Process both UX and Intent analysis and update conversations file."""
         
         # Load conversations from file
         conversations = self.load_conversations_from_file()
         
-        print(f"Starting Groq UX processing from index {start_index}")
+        print(f"Starting Groq UX and Intent processing from index {start_index}")
         print(f"Total conversations to process: {len(conversations) - start_index}")
 
         # Initialize Groq mapper
@@ -172,6 +175,11 @@ class GroqProcessor:
 
         updated_conversations = conversations.copy()
         total_processed = start_index
+        
+        # Track analysis statistics
+        ux_stats = {"positive": 0, "negative": 0, "neutral": 0}
+        intent_stats = {}
+        successful_analyses = 0
 
         with ThreadPoolExecutor(max_workers=self.max_concurrent_requests) as executor:
             for i in range(start_index, len(conversations), self.batch_size):
@@ -202,8 +210,19 @@ class GroqProcessor:
 
                         if result["success"]:
                             # Update the conversation in our list
-                            updated_conversations[i + j] = result["conversation"]
+                            analyzed_conv = result["conversation"]
+                            updated_conversations[i + j] = analyzed_conv
                             successful_count += 1
+                            successful_analyses += 1
+                            
+                            # Track UX and intent statistics
+                            if analyzed_conv.analysis and analyzed_conv.analysis.ux:
+                                sentiment = analyzed_conv.analysis.ux.sentiment.value
+                                ux_stats[sentiment] = ux_stats.get(sentiment, 0) + 1
+                            
+                            if analyzed_conv.analysis and analyzed_conv.analysis.request:
+                                for intent in analyzed_conv.analysis.request.intent:
+                                    intent_stats[intent.value] = intent_stats.get(intent.value, 0) + 1
                         else:
                             print(
                                 f"Failed to process conversation {batch[j].dialogue_id}: {result['error']}"
@@ -234,10 +253,28 @@ class GroqProcessor:
                 # Brief pause to avoid overwhelming the API
                 await asyncio.sleep(1)
 
-        print(f"\\nUX processing complete! Total processed: {total_processed}")
+        # Print final statistics
+        print(f"\\nUX and Intent processing complete! Total processed: {total_processed}")
+        print(f"Successful analyses: {successful_analyses}")
+        
+        print("\\n=== UX Analysis Results ===")
+        for sentiment, count in ux_stats.items():
+            percentage = (count / successful_analyses * 100) if successful_analyses > 0 else 0
+            print(f"  {sentiment}: {count} ({percentage:.1f}%)")
+        
+        print("\\n=== Intent Analysis Results ===")
+        for intent, count in sorted(intent_stats.items(), key=lambda x: x[1], reverse=True)[:10]:
+            percentage = (count / successful_analyses * 100) if successful_analyses > 0 else 0
+            print(f"  {intent}: {count} ({percentage:.1f}%)")
+        
         return updated_conversations
 
-    def get_resume_info(self, conversations_count: int) -> Tuple[bool, int]:
+    async def process_ux_analysis(self, start_index: int = 0) -> list[Conversation]:
+        """Legacy method for backward compatibility. Use process_ux_and_intent_analysis instead."""
+        print("Note: process_ux_analysis is deprecated. Using process_ux_and_intent_analysis which includes both UX and Intent analysis.")
+        return await self.process_ux_and_intent_analysis(start_index)
+
+    def get_resume_info(self, conversations_count: int) -> tuple[bool, int]:
         """Check if we should resume processing and return start index."""
         progress = self.load_progress()
 
@@ -250,7 +287,7 @@ class GroqProcessor:
             print("No existing progress found, starting fresh")
             return False, 0
 
-    def cleanup_progress(self):
+    def cleanup_progress(self) -> None:
         """Clean up progress file."""
         if os.path.exists(self.progress_file):
             os.remove(self.progress_file)

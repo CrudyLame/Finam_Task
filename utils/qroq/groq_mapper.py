@@ -6,7 +6,7 @@ import json
 import re
 import time
 import random
-from typing import Optional
+from typing import TYPE_CHECKING, Union, Optional
 
 from utils.conv.conversation import (
     Conversation, 
@@ -15,8 +15,12 @@ from utils.conv.conversation import (
     ProblemDetection, 
     UX,
     validate_request_category,
-    get_category_for_intent
+    get_category_for_intent,
+    BlockType
 )
+
+if TYPE_CHECKING:
+    from groq import Groq
 from utils.problem_eda import create_problem_detection_for_conversation
 from utils.conv.conversation import (
     SentimentType,
@@ -44,17 +48,18 @@ class GroqMapper:
         """
         self.api_key = api_key
         self.model_name = model_name
+        self.client: Optional['Groq'] = None
         self._setup_client()
 
-    def _setup_client(self):
+    def _setup_client(self) -> None:
         """Setup Groq client."""
         try:
             from groq import Groq
 
             self.client = Groq(api_key=self.api_key)
-            print(f"Successfully initialized Groq client with {self.model_name}")
+            self._log_client_setup()
         except Exception as e:
-            print(f"Error initializing Groq client: {e}")
+            self._log_client_error(e)
             raise
 
     def map_conversation(self, conversation: Conversation) -> Conversation:
@@ -83,7 +88,7 @@ class GroqMapper:
             return conversation_copy
             
         except Exception as e:
-            print(f"Error processing conversation {conversation.dialogue_id}: {e}")
+            self._log_processing_error(conversation.dialogue_id, e)
             return conversation
 
     def _extract_wait_time(self, error_str: str) -> Optional[float]:
@@ -93,7 +98,7 @@ class GroqMapper:
             match = re.search(r"Please try again in (\d+\.?\d*)s", error_str)
             if match:
                 return float(match.group(1))
-        except:
+        except Exception:
             pass
         return None
 
@@ -175,13 +180,13 @@ class GroqMapper:
                 if wait_time is None:
                     wait_time = base_delay * (2**attempt) + random.uniform(0, 1)
 
-                print(f"Rate limit hit for conversation {dialogue_id}, waiting {wait_time:.2f}s (attempt {attempt + 1}/{max_retries})")
+                self._log_rate_limit_wait(dialogue_id, wait_time, attempt + 1, max_retries)
                 time.sleep(wait_time)
                 return True
             else:
-                print(f"Rate limit exceeded for conversation {dialogue_id} after {max_retries} attempts")
+                self._log_rate_limit_exceeded(dialogue_id, max_retries)
         else:
-            print(f"Error processing conversation {dialogue_id}: {error}")
+            self._log_processing_error(dialogue_id, error)
         
         return False
 
@@ -291,7 +296,7 @@ JSON format:
                 is_successful=parsed_data.get("is_successful", True),
             )
         except Exception as e:
-            print(f"Error parsing UX analysis: {e}")
+            self._log_ux_parsing_error(e)
             return self._default_ux_analysis()
 
     def _parse_sentiment(self, sentiment_str: str) -> SentimentType:
@@ -334,7 +339,7 @@ JSON format:
                 intent=[intent]
             )
         except Exception as e:
-            print(f"Error parsing intent analysis: {e}")
+            self._log_intent_parsing_error(e)
             return self._default_request_category()
 
     def _default_request_category(self) -> RequestCategory:
@@ -343,3 +348,31 @@ JSON format:
             category=[CategoryType.OTHER],
             intent=[IntentType.GENERAL_INFO]
         )
+
+    def _log_client_setup(self) -> None:
+        """Log successful client setup."""
+        print(f"Successfully initialized Groq client with {self.model_name}")
+
+    def _log_client_error(self, error: Exception) -> None:
+        """Log client setup error."""
+        print(f"Error initializing Groq client: {error}")
+
+    def _log_processing_error(self, dialogue_id: int, error: Exception) -> None:
+        """Log conversation processing error."""
+        print(f"Error processing conversation {dialogue_id}: {error}")
+
+    def _log_rate_limit_wait(self, dialogue_id: int, wait_time: float, attempt: int, max_retries: int) -> None:
+        """Log rate limit wait."""
+        print(f"Rate limit hit for conversation {dialogue_id}, waiting {wait_time:.2f}s (attempt {attempt}/{max_retries})")
+
+    def _log_rate_limit_exceeded(self, dialogue_id: int, max_retries: int) -> None:
+        """Log rate limit exceeded."""
+        print(f"Rate limit exceeded for conversation {dialogue_id} after {max_retries} attempts")
+
+    def _log_ux_parsing_error(self, error: Exception) -> None:
+        """Log UX parsing error."""
+        print(f"Error parsing UX analysis: {error}")
+
+    def _log_intent_parsing_error(self, error: Exception) -> None:
+        """Log intent parsing error."""
+        print(f"Error parsing intent analysis: {error}")

@@ -132,7 +132,7 @@ class ConvBlock(BaseModel):
         block_type_mapping = {
             "request": BlockType.USER,
             "response": BlockType.SYSTEM,
-            "intermidiat_response": BlockType.AGENT
+            "intermediate_response": BlockType.AGENT
         }
         
         block_type = block_type_mapping.get(csv_block_type, BlockType.SYSTEM)
