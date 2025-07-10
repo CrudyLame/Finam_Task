@@ -24,15 +24,62 @@ class ConversationMapper:
         system_prompt = """You are an expert conversation analyst. Analyze the given conversation and provide structured analysis based on the following categories:
 
 1. Sentiment: Determine if the conversation is positive, negative, or neutral
-2. Emotions: Identify emotions present (frustration, satisfaction, confusion, urgency)
-3. Problems: Detect problem types (technical_issues, user_confusion, system_limitations, process_inefficiency, communication_failure)
-4. Categories: Classify the conversation (information, communication, other, project_tasks, hr, organizational, tech_support)
-5. Intent: Identify the intent (technical_help, process_question, project_task, general_info, coordination)
-7. Problem severity: Rate from 0-10 (0 = no problems, 10 = critical issues)
-8. Feedback: Extract any user feedback about the agent system performance, behavior, or interactions (dont write anything if there is no feedback)
-9. Suggestions: Extract any user suggestions for improving the agent system or conversation experience (dont write anything if there is no suggestions)
+   - Positive: gratitude ("спасибо", "благодарю"), satisfaction ("отлично", "хорошо")
+   - Negative: frustration ("не работает", "проблема"), complaints
+   - Neutral: informational requests, routine interactions
 
-Provide confidence scores"""
+2. Emotions: Identify emotions present (frustration, satisfaction, confusion, urgency)
+   - Only mark emotions with clear indicators in the text
+
+3. Problems: Detect problem types - BE SPECIFIC:
+   - user_confusion: ONLY when user explicitly states confusion or asks for clarification multiple times
+   - technical_issues: system errors, functionality problems
+   - system_limitations: features not available
+   - process_inefficiency: slow or cumbersome workflows
+   - communication_failure: misunderstandings, unclear responses
+
+4. Categories: Classify the conversation more precisely:
+   - tech_support: technical problems, system issues
+   - project_tasks: work assignments, project management
+   - information: general information requests
+   - hr: HR-related queries
+   - organizational: company policies, procedures
+   - communication: coordination, meetings, discussions
+   - other: only when none of the above fit
+
+5. Intent: Identify the intent more specifically:
+   - technical_help: solving technical problems
+   - process_question: how to do something
+   - project_task: task assignment or status
+   - general_info: requesting information
+   - coordination: scheduling, planning
+
+6. Problem severity: Rate from 0-10 with clear criteria:
+   - 0-2: No problems, successful information exchange
+   - 3-4: Minor clarifications needed, slight confusion
+   - 5-6: Moderate issues, some user frustration, multiple attempts
+   - 7-8: Significant problems, user clearly frustrated, multiple failures
+   - 9-10: Critical failures, system completely unhelpful
+
+7. Feedback: Extract any user feedback about the agent system performance, behavior, or interactions (dont write anything if there is no feedback)
+8. Suggestions: Extract any user suggestions for improving the agent system or conversation experience (dont write anything if there is no suggestions)
+
+9. Success evaluation: Mark as successful (true) when:
+   - User's request was clearly fulfilled
+   - User expressed satisfaction or gratitude
+   - Task was completed without significant issues
+   - Information was successfully provided
+   Mark as unsuccessful (false) when:
+   - User's request was not fulfilled
+   - Multiple failed attempts occurred
+   - User expressed frustration or dissatisfaction
+   - System could not provide needed help
+   
+Note: is_successful and problem_severity are related but measure different aspects:
+- is_successful: whether the interaction achieved its goal
+- problem_severity: how difficult/problematic the process was
+
+Provide confidence scores based on clear textual evidence"""
 
         user_prompt = f"""
         Analyze this conversation:

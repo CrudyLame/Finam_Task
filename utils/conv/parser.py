@@ -75,8 +75,14 @@ class ConversationParser:
             duration_minutes = (end_time - start_time).total_seconds() / 60
             message_count = len(conversation_data)
             
-            # Combine all block_data into full_text
-            full_text = '\n'.join(conversation_data['block_data'].astype(str))
+            # Combine all block_data into full_text with deduplication
+            unique_blocks = []
+            seen_blocks = set()
+            for block in conversation_data['block_data'].astype(str):
+                if block not in seen_blocks:
+                    unique_blocks.append(block)
+                    seen_blocks.add(block)
+            full_text = '\n'.join(unique_blocks)
             
             # Extract departments
             departments = conversation_data['nnDepartment'].dropna().unique().tolist()

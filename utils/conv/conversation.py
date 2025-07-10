@@ -35,13 +35,25 @@ class EmotionType(str, Enum):
 class CategoryType(str, Enum):
     """Request categories"""
 
-    INFORMATION = "information"
-    COMMUNICATION = "communication"
-    OTHER = "other"
-    PROJECT_TASKS = "project_tasks"
-    HR = "hr"
-    ORGANIZATIONAL = "organizational"
-    TECH_SUPPORT = "tech_support"
+    # --- существующие ---
+    INFORMATION      = "information"       # поиск фактов, справка
+    COMMUNICATION    = "communication"     # сообщения, e-mail, чат
+    OTHER            = "other"             # прочее
+    PROJECT_TASKS    = "project_tasks"     # запросы по задачам/проектам
+    HR               = "hr"                # кадровые вопросы
+    ORGANIZATIONAL   = "organizational"    # орг-структура, процессы
+    TECH_SUPPORT     = "tech_support"      # техническая поддержка
+
+    # --- новые, основанные на профилях ассистентов ---
+    PRODUCTS_INFO    = "products_info"     # сведения о продуктах, тарифах, ограничениях
+    DEPARTMENT_INFO  = "department_info"   # «кто в каком отделе», орг-диаграммы
+    MEETINGS         = "meetings"          # календарь, планирование встреч, конфликты
+    TASK_MANAGEMENT  = "task_management"   # личные to-do, напоминания, статусы
+    FAQ              = "faq"               # помощь по использованию бота/сервиса
+    FEEDBACK         = "feedback"          # предложения, жалобы, обратная связь
+    STATISTICS       = "statistics"        # запросы метрик, usage-report’ы
+    DESIGN_REQUEST   = "design_request"    # генерация презентаций, визуальных материалов
+    SOURCES_REQUEST  = "sources_request"   # просьба привести или проверить источники
 
 
 class IntentType(str, Enum):
