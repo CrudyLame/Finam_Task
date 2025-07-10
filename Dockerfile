@@ -19,16 +19,13 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Add uv to PATH
-ENV PATH="/root/.cargo/bin:$PATH"
-
 # Copy dependency manifests
 COPY pyproject.toml ./
 COPY uv.lock ./
 
-# Install Python dependencies in venv
-RUN uv venv && \
-    uv sync --locked --no-install-project --no-editable
+# Install Python dependencies in venv using the full path to uv
+RUN /root/.cargo/bin/uv venv && \
+    /root/.cargo/bin/uv sync --locked --no-install-project --no-editable
 
 # Copy web_report directory (which includes conversations_data.json)
 COPY web_report/ ./web_report/
