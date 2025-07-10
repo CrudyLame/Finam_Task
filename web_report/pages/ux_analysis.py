@@ -27,7 +27,7 @@ def show_ux_analysis(conversations):
 		
 		# Notes section (hardcoded)
 		st.subheader("📝 Заметки")
-		st.info("Здесь размещаются заметки по анализу пользовательского опыта.")
+		st.info("На основе фидбека юзера (пропущенного через LLM) и ряда выявленных проблем определены потенциальные фичи для улучшения пользовательского опыта.")
 		
 		ux_stats = get_ux_stats(conversations)
 	
@@ -184,5 +184,38 @@ def show_ux_analysis(conversations):
 			st.info("Недостаточно данных для анализа удовлетворенности по агентским системам")
 	
 	with tab2:
+		st.subheader("💡 Потенциальные фичи")
+		
+		# Scheduler / Task-reminders
+		st.subheader("🕒 Scheduler / Task-reminders")
+		st.markdown("""
+		**Почему именно это решение:**
+		Пользователи ежедневно просят напомнить или перенести задачу. Агент-планировщик с повторениями и push-уведомлениями напрямую уменьшит просроченные задачи и повысит удовлетворённость.
+		
+		**Ключевые запросы пользователей:**
+		- "Improve reminders"
+		- "Ability to transfer tasks to calendar or receive reminders"
+		- "Send reminders by email"
+		- "Implement a feature to send reminders on task due dates"
+		- "Improve proactive reminders"
+		""")
+		
+		st.divider()
+		
+		# Notification center
+		st.subheader("🔔 Notification center")
+		st.markdown("""
+		**Почему именно это решение:**
+		Агрегирует статусы задач, приглашения и сбои из разных агентов, позволяя настроить каналы и «тихие часы». Снижает информационный шум и ускоряет реакцию команды.
+		
+		**Ключевые запросы пользователей:**
+		- "Implement a notification system to inform users when an agent is unavailable"
+		- "Provide clear and timely notifications about changes to scheduled events"
+		- "Provide real-time updates to users about meetings they are not involved in"
+		- "Display a confirmation message or update the user when new facts are successfully inserted"
+		- "Provide response time estimate"
+		""")
+		
+		st.divider()
 		st.subheader("📝 Заметки")
-		st.info("Здесь размещаются заметки по анализу пользовательского опыта.")
+		st.info("нашел на основе юзер фидбека, например что приходит в голову")
