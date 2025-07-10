@@ -24,8 +24,8 @@ COPY pyproject.toml ./
 COPY uv.lock ./
 
 # Install Python dependencies in venv using the full path to uv
-RUN /root/.cargo/bin/uv venv && \
-    /root/.cargo/bin/uv sync --locked --no-install-project --no-editable
+RUN /root/.local/bin/uv venv && \
+    /root/.local/bin/uv sync --locked --no-install-project --no-editable
 
 # Copy web_report directory (which includes conversations_data.json)
 COPY web_report/ ./web_report/
