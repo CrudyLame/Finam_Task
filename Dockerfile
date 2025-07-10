@@ -33,8 +33,8 @@ COPY web_report/ ./web_report/
 # Set proper environment path
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Expose streamlit port
-EXPOSE 8501
+# Expose port 8080 for Netlify
+EXPOSE 8080
 
-# Run streamlit app
-CMD ["streamlit", "run", "web_report/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Run streamlit app on port 8080
+CMD ["streamlit", "run", "web_report/app.py", "--server.port=8080", "--server.address=0.0.0.0"]

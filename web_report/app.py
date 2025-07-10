@@ -27,12 +27,38 @@ def main():
 		st.error(f"Failed to load data: {str(e)}")
 		return
 	
+	# Initialize session state for page navigation
+	if 'current_page' not in st.session_state:
+		st.session_state.current_page = "Обзор"
+	
 	# Sidebar navigation
 	st.sidebar.title("Навигация")
-	page = st.sidebar.selectbox(
-		"Выберите тип анализа",
-		["Обзор", "Анализ категорий", "Анализ проблем", "UX анализ", "Производительность агентов"]
+	
+	# Navigation buttons
+	pages = {
+		"📈 Обзор": "Обзор",
+		"📊 Анализ категорий": "Анализ категорий", 
+		"🔍 Анализ проблем": "Анализ проблем",
+		"🎨 UX анализ": "UX анализ",
+		"⚡ Производительность агентов": "Производительность агентов"
+	}
+	
+	for display_name, page_key in pages.items():
+		if st.sidebar.button(display_name, key=f"nav_{page_key}", use_container_width=True):
+			st.session_state.current_page = page_key
+	
+	# Also keep selectbox for compatibility 
+	selected_page = st.sidebar.selectbox(
+		"Или выберите из списка:",
+		list(pages.values()),
+		index=list(pages.values()).index(st.session_state.current_page)
 	)
+	
+	# Update current page if selectbox changed
+	if selected_page != st.session_state.current_page:
+		st.session_state.current_page = selected_page
+	
+	page = st.session_state.current_page
 	
 	# Overview metrics
 	st.sidebar.markdown("---")
