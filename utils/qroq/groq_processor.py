@@ -23,7 +23,7 @@ class GroqProcessor:
         model_name: str = "llama3-8b-8192",
         max_concurrent_requests: int = 3,
         batch_size: int = 25,
-        results_file: str = "analyzed_conversations_groq.json",
+        conversations_file: str = "conversations_parsed.json",
     ):
         """
         Initialize the Groq processor.
@@ -33,13 +33,13 @@ class GroqProcessor:
             model_name: Groq model name
             max_concurrent_requests: Maximum concurrent API requests
             batch_size: Number of conversations to process before saving
-            results_file: File to store results
+            conversations_file: Conversations JSON file to update with UX analysis
         """
         self.api_key = api_key
         self.model_name = model_name
         self.max_concurrent_requests = max_concurrent_requests
         self.batch_size = batch_size
-        self.results_file = results_file
+        self.conversations_file = conversations_file
         self.progress_file = "processing_progress_groq.json"
 
     def conversation_to_dict(self, conv: Conversation) -> dict:
@@ -53,22 +53,28 @@ class GroqProcessor:
             "message_count": conv.message_count,
             "full_text": conv.full_text,
             "departments": conv.departments,
+            "blocks": [block.model_dump() for block in conv.blocks] if conv.blocks else [],
+            "agent_types": [agent.value for agent in conv.agent_types] if conv.agent_types else [],
             "analysis": None,
         }
 
         if conv.analysis:
             result["analysis"] = {
-                "sentiment": conv.analysis.sentiment,
-                "sentiment_confidence": conv.analysis.sentiment_confidence,
-                "emotions": conv.analysis.emotions,
-                "problems": conv.analysis.problems,
-                "problem_severity": conv.analysis.problem_severity,
-                "problem_extra_info": conv.analysis.problem_extra_info,
-                "category": conv.analysis.category,
-                "intent": conv.analysis.intent,
-                "feedback": conv.analysis.feedback,
-                "suggestions": conv.analysis.suggestions,
-                "is_successful": conv.analysis.is_successful,
+                "request": {
+                    "category": [cat.value for cat in conv.analysis.request.category],
+                    "intent": [intent.value for intent in conv.analysis.request.intent],
+                },
+                "problems": {
+                    "problems": [prob.value for prob in conv.analysis.problems.problems],
+                },
+                "ux": {
+                    "sentiment": conv.analysis.ux.sentiment.value,
+                    "sentiment_confidence": conv.analysis.ux.sentiment_confidence,
+                    "emotions": [em.value for em in conv.analysis.ux.emotions],
+                    "feedback": conv.analysis.ux.feedback,
+                    "suggestions": conv.analysis.ux.suggestions,
+                    "is_successful": conv.analysis.ux.is_successful,
+                }
             }
 
         return result
@@ -79,7 +85,7 @@ class GroqProcessor:
             "current_index": current_index,
             "total_count": total_count,
             "timestamp": datetime.now().isoformat(),
-            "results_file": self.results_file,
+            "conversations_file": self.conversations_file,
         }
 
         with open(self.progress_file, "w", encoding="utf-8") as f:
@@ -95,41 +101,40 @@ class GroqProcessor:
                 pass
         return {}
 
-    def save_results(self, conversations_dict: List[Dict], append_mode: bool = False):
-        """Save results to JSON file."""
-        if append_mode and os.path.exists(self.results_file):
-            # Load existing data and append
-            try:
-                with open(self.results_file, "r", encoding="utf-8") as f:
-                    existing_data = json.load(f)
+    def update_conversations_file(self, updated_conversations: List[Conversation]):
+        """Update the conversations file with UX analysis."""
+        # Load existing conversations file
+        with open(self.conversations_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        # Update conversations with new UX analysis
+        for i, conv in enumerate(updated_conversations):
+            if i < len(data["conversations"]):
+                conv_dict = self.conversation_to_dict(conv)
+                data["conversations"][i] = conv_dict
+        
+        # Update metadata
+        data["metadata"]["last_updated"] = datetime.now().isoformat()
+        
+        # Save updated file
+        with open(self.conversations_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
 
-                existing_data["conversations"].extend(conversations_dict)
-                existing_data["metadata"]["total_conversations"] = len(
-                    existing_data["conversations"]
-                )
-                existing_data["metadata"]["last_updated"] = datetime.now().isoformat()
-
-                output_data = existing_data
-            except:
-                output_data = self._create_output_data(conversations_dict)
-        else:
-            output_data = self._create_output_data(conversations_dict)
-
-        with open(self.results_file, "w", encoding="utf-8") as f:
-            json.dump(output_data, f, ensure_ascii=False, indent=2)
-
-    def _create_output_data(self, conversations_dict: List[Dict]) -> Dict:
-        """Create output data structure."""
-        return {
-            "metadata": {
-                "total_conversations": len(conversations_dict),
-                "processed_at": datetime.now().isoformat(),
-                "llm_provider": "groq",
-                "model": self.model_name,
-                "source_file": "data/data.csv",
-            },
-            "conversations": conversations_dict,
-        }
+    def load_conversations_from_file(self) -> List[Conversation]:
+        """Load conversations from the JSON file."""
+        with open(self.conversations_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        conversations = []
+        for conv_data in data["conversations"]:
+            # Handle datetime fields
+            conv_data["start_time"] = datetime.fromisoformat(conv_data["start_time"])
+            conv_data["end_time"] = datetime.fromisoformat(conv_data["end_time"])
+            
+            # Reconstruct conversation object
+            conversations.append(Conversation(**conv_data))
+        
+        return conversations
 
     def process_conversation_sync(self, args: Tuple[Conversation, GroqMapper]) -> Dict:
         """Synchronous wrapper for processing a single conversation."""
@@ -153,17 +158,19 @@ class GroqProcessor:
                 "error": str(e),
             }
 
-    async def process_all_conversations(
-        self, conversations: List[Conversation], start_index: int = 0
-    ) -> List[Dict]:
-        """Process all conversations with Groq."""
-
-        print(f"Starting Groq processing from index {start_index}")
+    async def process_ux_analysis(self, start_index: int = 0) -> List[Conversation]:
+        """Process UX analysis and update conversations file."""
+        
+        # Load conversations from file
+        conversations = self.load_conversations_from_file()
+        
+        print(f"Starting Groq UX processing from index {start_index}")
         print(f"Total conversations to process: {len(conversations) - start_index}")
 
         # Initialize Groq mapper
         mapper = GroqMapper(api_key=self.api_key, model_name=self.model_name)
 
+        updated_conversations = conversations.copy()
         total_processed = start_index
 
         with ThreadPoolExecutor(max_workers=self.max_concurrent_requests) as executor:
@@ -185,8 +192,7 @@ class GroqProcessor:
                     for args in batch_args
                 ]
 
-                # Collect results
-                batch_processed = []
+                # Collect results and update conversations
                 successful_count = 0
                 failed_count = 0
 
@@ -195,36 +201,14 @@ class GroqProcessor:
                         result = future.result(timeout=120)
 
                         if result["success"]:
-                            conv_dict = self.conversation_to_dict(
-                                result["conversation"]
-                            )
-                            batch_processed.append(conv_dict)
+                            # Update the conversation in our list
+                            updated_conversations[i + j] = result["conversation"]
                             successful_count += 1
                         else:
                             print(
                                 f"Failed to process conversation {batch[j].dialogue_id}: {result['error']}"
                             )
                             failed_count += 1
-
-                            # Add failed conversation with default analysis
-                            conv_dict = self.conversation_to_dict(
-                                result["conversation"]
-                            )
-                            if conv_dict["analysis"] is None:
-                                conv_dict["analysis"] = {
-                                    "sentiment": "neutral",
-                                    "sentiment_confidence": 0.0,
-                                    "emotions": [],
-                                    "problems": [],
-                                    "problem_severity": 0,
-                                    "problem_extra_info": "Failed to analyze",
-                                    "category": ["other"],
-                                    "intent": ["general_info"],
-                                    "feedback": [],
-                                    "suggestions": [],
-                                    "is_successful": False,
-                                }
-                            batch_processed.append(conv_dict)
 
                         # Progress indicator
                         if (j + 1) % 5 == 0:
@@ -236,21 +220,12 @@ class GroqProcessor:
                         )
                         failed_count += 1
 
-                        conv_dict = self.conversation_to_dict(batch[j])
-                        batch_processed.append(conv_dict)
-
                 batch_time = time.time() - batch_start_time
-
-                # Save batch results incrementally
-                if start_index == 0 and i == 0:
-                    self.save_results(batch_processed, append_mode=False)
-                else:
-                    self.save_results(batch_processed, append_mode=True)
-
                 total_processed += len(batch)
 
-                # Save progress
+                # Save progress and update file every batch
                 self.save_progress(total_processed, len(conversations))
+                self.update_conversations_file(updated_conversations)
 
                 print(f"  Batch completed in {batch_time:.2f}s")
                 print(f"  Successful: {successful_count}, Failed: {failed_count}")
@@ -259,13 +234,8 @@ class GroqProcessor:
                 # Brief pause to avoid overwhelming the API
                 await asyncio.sleep(1)
 
-        print(f"\\nProcessing complete! Total processed: {total_processed}")
-
-        # Load and return final results
-        with open(self.results_file, "r", encoding="utf-8") as f:
-            final_data = json.load(f)
-
-        return final_data["conversations"]
+        print(f"\\nUX processing complete! Total processed: {total_processed}")
+        return updated_conversations
 
     def get_resume_info(self, conversations_count: int) -> Tuple[bool, int]:
         """Check if we should resume processing and return start index."""
