@@ -12,14 +12,15 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and uv
 RUN apt-get update && \
     apt-get install -y curl && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy uv binary from official image
-COPY --from=ghcr.io/astral-sh/uv:0.7.8 /uv /bin/uv
+# Add uv to PATH
+ENV PATH="/root/.cargo/bin:$PATH"
 
 # Copy dependency manifests
 COPY pyproject.toml ./
@@ -29,9 +30,8 @@ COPY uv.lock ./
 RUN uv venv && \
     uv sync --locked --no-install-project --no-editable
 
-# Copy web_report directory and conversations data
+# Copy web_report directory (which includes conversations_data.json)
 COPY web_report/ ./web_report/
-COPY conversations_data.json ./conversations_data.json
 
 # Set proper environment path
 ENV PATH="/app/.venv/bin:$PATH"
