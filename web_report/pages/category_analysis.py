@@ -20,6 +20,10 @@ def show_category_analysis(conversations):
 	st.subheader("📝 Описание раздела")
 	st.info("Это место для описания раздела анализа категорий. Заполните по необходимости.")
 	
+	# Notes section (hardcoded)
+	st.subheader("📝 Заметки")
+	st.info("Здесь размещаются заметки по анализу категорий.")
+	
 	categories, intents = get_category_stats(conversations)
 	
 	col1, col2 = st.columns(2)
